@@ -1,0 +1,159 @@
+CREATE SCHEMA dannys_diner;
+    SET search_path = dannys_diner;
+    
+    CREATE TABLE sales (
+      "customer_id" VARCHAR(1),
+      "order_date" DATE,
+      "product_id" INTEGER
+    );
+    
+    INSERT INTO sales
+      ("customer_id", "order_date", "product_id")
+    VALUES
+      ('A', '2021-01-01', '1'),
+      ('A', '2021-01-01', '2'),
+      ('A', '2021-01-07', '2'),
+      ('A', '2021-01-10', '3'),
+      ('A', '2021-01-11', '3'),
+      ('A', '2021-01-11', '3'),
+      ('B', '2021-01-01', '2'),
+      ('B', '2021-01-02', '2'),
+      ('B', '2021-01-04', '1'),
+      ('B', '2021-01-11', '1'),
+      ('B', '2021-01-16', '3'),
+      ('B', '2021-02-01', '3'),
+      ('C', '2021-01-01', '3'),
+      ('C', '2021-01-01', '3'),
+      ('C', '2021-01-07', '3');
+     
+    
+    CREATE TABLE menu (
+      "product_id" INTEGER,
+      "product_name" VARCHAR(5),
+      "price" INTEGER
+    );
+    
+    INSERT INTO menu
+      ("product_id", "product_name", "price")
+    VALUES
+      ('1', 'sushi', '10'),
+      ('2', 'curry', '15'),
+      ('3', 'ramen', '12');
+      
+    
+    CREATE TABLE members (
+      "customer_id" VARCHAR(1),
+      "join_date" DATE
+    );
+    
+    INSERT INTO members
+      ("customer_id", "join_date")
+    VALUES
+      ('A', '2021-01-07'),
+      ('B', '2021-01-09');
+      
+    ALTER TABLE menu ADD poin INTEGER;
+    
+    UPDATE menu SET poin = 20 WHERE product_id = 1;
+    UPDATE menu SET poin = 10 WHERE product_id = 2;
+    UPDATE menu SET poin = 10 WHERE product_id = 3;
+    
+    
+    
+    
+    
+    
+    
+
+---
+
+**Query #1**
+
+    with t1 as
+    (select sales.customer_id, sales.product_id, menu.product_name, row_number() over (partition by sales.customer_id order by sales.product_id) as produk from dannys_diner.sales
+    join dannys_diner.menu on sales.product_id = menu.product_id)
+    select * from t1
+    where produk = 1;
+
+| customer_id | product_id | product_name | produk |
+| ----------- | ---------- | ------------ | ------ |
+| A           | 1          | sushi        | 1      |
+| B           | 1          | sushi        | 1      |
+| C           | 3          | ramen        | 1      |
+
+---
+**Query #2**
+
+    select sales.customer_id, menu.product_name, sales.order_date, members.join_date, row_number() over (partition by sales.customer_id order by sales.product_id desc) as produk 
+    from dannys_diner.sales
+    join dannys_diner.menu on sales.product_id = menu.product_id
+    join dannys_diner.members on sales.customer_id = members.customer_id
+    where sales.order_date>members.join_date;
+
+| customer_id | product_name | order_date               | join_date                | produk |
+| ----------- | ------------ | ------------------------ | ------------------------ | ------ |
+| A           | ramen        | 2021-01-10T00:00:00.000Z | 2021-01-07T00:00:00.000Z | 1      |
+| A           | ramen        | 2021-01-11T00:00:00.000Z | 2021-01-07T00:00:00.000Z | 2      |
+| A           | ramen        | 2021-01-11T00:00:00.000Z | 2021-01-07T00:00:00.000Z | 3      |
+| B           | ramen        | 2021-01-16T00:00:00.000Z | 2021-01-09T00:00:00.000Z | 1      |
+| B           | ramen        | 2021-02-01T00:00:00.000Z | 2021-01-09T00:00:00.000Z | 2      |
+| B           | sushi        | 2021-01-11T00:00:00.000Z | 2021-01-09T00:00:00.000Z | 3      |
+
+---
+**Query #3**
+
+    select sales.customer_id, menu.product_name, sales.order_date, members.join_date, row_number() over (partition by sales.customer_id order by sales.product_id asc) as produk 
+    from dannys_diner.sales
+    join dannys_diner.menu on sales.product_id = menu.product_id
+    join dannys_diner.members on sales.customer_id = members.customer_id
+    where sales.order_date<members.join_date;
+
+| customer_id | product_name | order_date               | join_date                | produk |
+| ----------- | ------------ | ------------------------ | ------------------------ | ------ |
+| A           | sushi        | 2021-01-01T00:00:00.000Z | 2021-01-07T00:00:00.000Z | 1      |
+| A           | curry        | 2021-01-01T00:00:00.000Z | 2021-01-07T00:00:00.000Z | 2      |
+| B           | sushi        | 2021-01-04T00:00:00.000Z | 2021-01-09T00:00:00.000Z | 1      |
+| B           | curry        | 2021-01-01T00:00:00.000Z | 2021-01-09T00:00:00.000Z | 2      |
+| B           | curry        | 2021-01-02T00:00:00.000Z | 2021-01-09T00:00:00.000Z | 3      |
+
+---
+**Query #4**
+
+    select sales.customer_id, sales.order_date, members.join_date, count (sales.product_id) over (partition by sales.customer_id), sum(menu.price) over(partition by sales.customer_id), row_number() over (partition by sales.customer_id order by sales.product_id asc) as produk 
+    from dannys_diner.sales
+    join dannys_diner.menu on sales.product_id = menu.product_id
+    join dannys_diner.members on sales.customer_id = members.customer_id
+    where sales.order_date<members.join_date;
+
+| customer_id | order_date               | join_date                | count | sum | produk |
+| ----------- | ------------------------ | ------------------------ | ----- | --- | ------ |
+| A           | 2021-01-01T00:00:00.000Z | 2021-01-07T00:00:00.000Z | 2     | 25  | 1      |
+| A           | 2021-01-01T00:00:00.000Z | 2021-01-07T00:00:00.000Z | 2     | 25  | 2      |
+| B           | 2021-01-04T00:00:00.000Z | 2021-01-09T00:00:00.000Z | 3     | 40  | 1      |
+| B           | 2021-01-01T00:00:00.000Z | 2021-01-09T00:00:00.000Z | 3     | 40  | 2      |
+| B           | 2021-01-02T00:00:00.000Z | 2021-01-09T00:00:00.000Z | 3     | 40  | 3      |
+
+---
+**Query #5**
+
+    select sales.customer_id, sales.order_date, members.join_date, menu.price, menu.poin, sum(menu.price*menu.poin) over (partition by sales.customer_id) as totalpoin,row_number() over (partition by sales.customer_id order by sales.product_id asc) as produk 
+    from dannys_diner.sales
+    join dannys_diner.menu on sales.product_id = menu.product_id
+    join dannys_diner.members on sales.customer_id = members.customer_id;
+
+| customer_id | order_date               | join_date                | price | poin | totalpoin | produk |
+| ----------- | ------------------------ | ------------------------ | ----- | ---- | --------- | ------ |
+| A           | 2021-01-01T00:00:00.000Z | 2021-01-07T00:00:00.000Z | 10    | 20   | 860       | 1      |
+| A           | 2021-01-07T00:00:00.000Z | 2021-01-07T00:00:00.000Z | 15    | 10   | 860       | 2      |
+| A           | 2021-01-01T00:00:00.000Z | 2021-01-07T00:00:00.000Z | 15    | 10   | 860       | 3      |
+| A           | 2021-01-11T00:00:00.000Z | 2021-01-07T00:00:00.000Z | 12    | 10   | 860       | 4      |
+| A           | 2021-01-11T00:00:00.000Z | 2021-01-07T00:00:00.000Z | 12    | 10   | 860       | 5      |
+| A           | 2021-01-10T00:00:00.000Z | 2021-01-07T00:00:00.000Z | 12    | 10   | 860       | 6      |
+| B           | 2021-01-04T00:00:00.000Z | 2021-01-09T00:00:00.000Z | 10    | 20   | 940       | 1      |
+| B           | 2021-01-11T00:00:00.000Z | 2021-01-09T00:00:00.000Z | 10    | 20   | 940       | 2      |
+| B           | 2021-01-01T00:00:00.000Z | 2021-01-09T00:00:00.000Z | 15    | 10   | 940       | 3      |
+| B           | 2021-01-02T00:00:00.000Z | 2021-01-09T00:00:00.000Z | 15    | 10   | 940       | 4      |
+| B           | 2021-01-16T00:00:00.000Z | 2021-01-09T00:00:00.000Z | 12    | 10   | 940       | 5      |
+| B           | 2021-02-01T00:00:00.000Z | 2021-01-09T00:00:00.000Z | 12    | 10   | 940       | 6      |
+
+---
