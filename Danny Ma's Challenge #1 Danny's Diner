@@ -62,6 +62,7 @@
 ---
 
 **Query #1**
+-- 1. What is the total amount each customer spent at the restaurant?
 
     select distinct s.customer_id, sum(m.price) over (partition by s.customer_id ) as total_spent 
     from dannys_diner.sales s
@@ -76,6 +77,7 @@
 
 ---
 **Query #2**
+-- 2. How many days has each customer visited the restaurant?
 
     select customer_id, count(distinct (order_date)) as visit   
     from dannys_diner.sales
@@ -89,6 +91,7 @@
 
 ---
 **Query #3**
+-- 3. What was the first item from the menu purchased by each customer?
 
     with t1 as
     (select customer_id, order_date, product_id,dense_rank() over (Partition by customer_id order by order_date) as RN
@@ -108,6 +111,7 @@
 
 ---
 **Query #4**
+-- 4. What is the most purchased item on the menu and how many times was it purchased by all customers?
 
     select product_name as most_purchased_item , count(s.product_id) over (partition by s.product_id) as repeat
     from dannys_diner.sales s
@@ -121,6 +125,7 @@
 
 ---
 **Query #5**
+-- 5. Which item was the most popular for each customer?
 
     with t1 as
     (select customer_id, product_name, count(s.product_id) as quantity, dense_rank() over (partition by customer_id order by count(customer_id) desc) as rank
@@ -143,6 +148,7 @@
 
 ---
 **Query #6**
+-- 6. Which item was purchased first by the customer after they became a member?
 
     with t1 as
     (select s.customer_id, s.product_id, join_date, order_date, product_name, row_number() over (Partition by s.customer_id order by order_date) as rn 
@@ -162,6 +168,7 @@
 
 ---
 **Query #7**
+-- 7. Which item was purchased just before the customer became a member?
 
     with t1 as
     (select s.customer_id, s.product_id, join_date, order_date, product_name, row_number() over (Partition by s.customer_id order by order_date desc) as rn 
@@ -181,6 +188,7 @@
 
 ---
 **Query #8**
+-- 8. What is the total items and amount spent for each member before they became a member?
 
     with t1 as
     (select s.customer_id, s.product_id,price 
@@ -201,6 +209,7 @@
 
 ---
 **Query #9**
+-- 9.  If each $1 spent equates to 10 points and sushi has a 2x points multiplier - how many points would each customer have?
 
     with t1 as
     (select s.customer_id, s.product_id, m.product_name, CASE WHEN m.product_id = 1 THEN m.price * 20 else m.price * 10 end as total_poin
@@ -221,6 +230,7 @@
 
 ---
 **Query #10**
+-- 10. In the first week after a customer join the program (including their join date) they earn 2x points on all items, not just sushi - how many points do customer A and B have at the d of January
 
     with t1 as
     (select s.customer_id, s.product_id, m.product_name, CASE WHEN 
@@ -242,6 +252,9 @@
 
 ---
 **Query #11**
+-- Bonus Questions
+-- Join All The Things Recreate the table with: customer_id, order_date, product_name, price, member
+
 
     select s.customer_id, s.order_date, m.product_name, m.price, case when s.order_date >= b.join_date then 'Y' 
     when s.order_date < b.join_date then 'N'
